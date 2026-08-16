@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { BalanceChart } from './components/BalanceChart'
 import { ItemForm } from './components/ItemForm'
 import { ItemList } from './components/ItemList'
 import { addDays, todayISO } from './lib/dates'
@@ -98,6 +99,10 @@ export default function App() {
               ? 'Your balance goes negative before then.'
               : 'You stay in the black across the whole window.'}
           </div>
+        </div>
+
+        <div className="mt-6">
+          <BalanceChart forecast={forecast} />
         </div>
 
         <div className="mt-8">
