@@ -14,6 +14,7 @@ const HORIZON_DAYS = 90
 export default function App() {
   const [state, setState] = useState<AppState>(() => load())
   const [openingInput, setOpeningInput] = useState(() => centsToInput(load().openingCents))
+  const [showAllDays, setShowAllDays] = useState(true)
 
   useEffect(() => {
     save(state)
@@ -27,12 +28,14 @@ export default function App() {
     [state.items, state.openingCents, start, end]
   )
 
-  const activeDays = useMemo(
+  const visibleDays = useMemo(
     () =>
-      forecast.days.filter(
-        d => d.occurrences.length > 0 || d.date === forecast.troughDate
-      ),
-    [forecast]
+      showAllDays
+        ? forecast.days
+        : forecast.days.filter(
+            d => d.occurrences.length > 0 || d.date === forecast.troughDate
+          ),
+    [forecast, showAllDays]
   )
 
   function addItem(item: CashItem) {
@@ -121,38 +124,49 @@ export default function App() {
           <ItemList items={state.items} onDelete={deleteItem} />
         </div>
 
-        <p className="mt-8 text-xs text-neutral-500">
-          Showing the {activeDays.length} days with activity. The chart above covers
-          the full {HORIZON_DAYS}-day window.
-        </p>
+        <div className="mt-8 flex items-baseline justify-between">
+          <p className="text-xs text-neutral-500">
+            {showAllDays
+              ? `Showing all ${forecast.days.length} days.`
+              : `Showing the ${visibleDays.length} days with activity.`}
+          </p>
+          <button
+            onClick={() => setShowAllDays(v => !v)}
+            className="text-xs text-neutral-400 hover:text-neutral-200"
+          >
+            {showAllDays ? 'Show activity only ↑' : 'Show every day ↓'}
+          </button>
+        </div>
 
         <table className="mt-2 w-full text-sm">
           <thead className="text-left text-xs uppercase tracking-wide text-neutral-500">
             <tr className="border-b border-neutral-800">
-              <th className="py-2 font-medium">Date</th>
-              <th className="py-2 font-medium">Activity</th>
-              <th className="py-2 text-right font-medium">Change</th>
-              <th className="py-2 text-right font-medium">Balance</th>
+              <th className="py-2.5 font-medium">Date</th>
+              <th className="py-2.5 font-medium">Activity</th>
+              <th className="py-2.5 text-right font-medium">Change</th>
+              <th className="py-2.5 text-right font-medium">Balance</th>
             </tr>
           </thead>
           <tbody>
-            {activeDays.map(day => {
+            {visibleDays.map(day => {
               const isTrough = day.date === forecast.troughDate
               const net = day.closingCents - day.openingCents
               return (
                 <tr
                   key={day.date}
-                  className={`border-b border-neutral-900 ${isTrough ? 'bg-red-950/50' : ''}`}
+                  className={`border-b border-neutral-900 ${isTrough ? 'bg-red-950/50' : ''} ${
+                    day.occurrences.length === 0 ? 'text-neutral-600' : ''
+                  }`}
                 >
-                  <td className="py-1.5 whitespace-nowrap">{formatDate(day.date)}</td>
-                  <td className="py-1.5">
+                  <td className="py-2.5 whitespace-nowrap">{formatDate(day.date)}</td>
+                  <td className="py-2.5">
                     {day.occurrences.map(o => o.label).join(', ') || '—'}
                   </td>
-                  <td className="py-1.5 text-right whitespace-nowrap">
+                  <td className="py-2.5 text-right whitespace-nowrap">
                     {net === 0 ? '' : formatCents(net)}
                   </td>
                   <td
-                    className={`py-1.5 text-right whitespace-nowrap ${
+                    className={`py-2.5 text-right whitespace-nowrap ${
                       day.closingCents < 0 ? 'text-red-400' : ''
                     }`}
                   >
