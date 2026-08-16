@@ -1,29 +1,86 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { ItemForm } from './components/ItemForm'
+import { ItemList } from './components/ItemList'
 import { addDays, todayISO } from './lib/dates'
 import { buildForecast } from './lib/forecast'
-import { formatCents, formatDate } from './lib/money'
-import { SEED_ITEMS, SEED_OPENING_CENTS } from './lib/seed'
+import { centsToInput, formatCents, formatDate, parseAmountToCents } from './lib/money'
+import { load, reset, save, type AppState } from './lib/storage'
+import type { CashItem } from './lib/types'
 
 /** Fixed 90-day horizon. Far enough to catch an annual renewal, short enough to read. */
 const HORIZON_DAYS = 90
 
 export default function App() {
+  const [state, setState] = useState<AppState>(() => load())
+  const [openingInput, setOpeningInput] = useState(() => centsToInput(load().openingCents))
+
+  useEffect(() => {
+    save(state)
+  }, [state])
+
   const start = todayISO()
   const end = addDays(start, HORIZON_DAYS)
 
   const forecast = useMemo(
-    () => buildForecast(SEED_ITEMS, SEED_OPENING_CENTS, start, end),
-    [start, end]
+    () => buildForecast(state.items, state.openingCents, start, end),
+    [state.items, state.openingCents, start, end]
   )
+
+  function addItem(item: CashItem) {
+    setState(s => ({ ...s, items: [...s.items, item] }))
+  }
+
+  function deleteItem(id: string) {
+    setState(s => ({ ...s, items: s.items.filter(i => i.id !== id) }))
+  }
+
+  function commitOpening(value: string) {
+    const cents = parseAmountToCents(value)
+    if (cents === null) {
+      setOpeningInput(centsToInput(state.openingCents))   // reject, restore
+      return
+    }
+    setState(s => ({ ...s, openingCents: cents }))
+  }
+
+  function handleReset() {
+    reset()
+    const fresh = load()
+    setState(fresh)
+    setOpeningInput(centsToInput(fresh.openingCents))
+  }
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100">
       <div className="mx-auto max-w-3xl px-6 py-10">
-        <h1 className="text-2xl font-semibold">Cash-Flow Forecaster</h1>
-        <p className="mt-1 text-sm text-neutral-400">
-          {formatDate(start)} to {formatDate(end)} · opening balance{' '}
-          {formatCents(SEED_OPENING_CENTS)}
-        </p>
+        <header className="flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold">Cash-Flow Forecaster</h1>
+            <p className="mt-1 text-sm text-neutral-400">
+              {formatDate(start)} to {formatDate(end)}
+            </p>
+          </div>
+          <button
+            onClick={handleReset}
+            className="text-xs text-neutral-500 hover:text-neutral-300"
+          >
+            Reset to sample data
+          </button>
+        </header>
+
+        <div className="mt-6 flex items-end gap-3">
+          <div>
+            <label className="mb-1 block text-xs uppercase tracking-wide text-neutral-500">
+              Balance today (RM)
+            </label>
+            <input
+              className="w-40 rounded border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-sm focus:border-neutral-500 focus:outline-none"
+              value={openingInput}
+              onChange={e => setOpeningInput(e.target.value)}
+              onBlur={e => commitOpening(e.target.value)}
+            />
+          </div>
+        </div>
 
         <div
           className={`mt-6 rounded-lg border p-4 ${
@@ -32,9 +89,7 @@ export default function App() {
               : 'border-neutral-800 bg-neutral-900'
           }`}
         >
-          <div className="text-xs uppercase tracking-wide text-neutral-400">
-            Lowest point
-          </div>
+          <div className="text-xs uppercase tracking-wide text-neutral-400">Lowest point</div>
           <div className="mt-1 text-xl font-semibold">
             {formatCents(forecast.troughCents)} on {formatDate(forecast.troughDate)}
           </div>
@@ -43,6 +98,14 @@ export default function App() {
               ? 'Your balance goes negative before then.'
               : 'You stay in the black across the whole window.'}
           </div>
+        </div>
+
+        <div className="mt-8">
+          <ItemForm onAdd={addItem} />
+        </div>
+
+        <div className="mt-4">
+          <ItemList items={state.items} onDelete={deleteItem} />
         </div>
 
         <table className="mt-8 w-full text-sm">
@@ -61,9 +124,9 @@ export default function App() {
               return (
                 <tr
                   key={day.date}
-                  className={`border-b border-neutral-900 ${
-                    isTrough ? 'bg-red-950/50' : ''
-                  } ${day.occurrences.length === 0 ? 'text-neutral-600' : ''}`}
+                  className={`border-b border-neutral-900 ${isTrough ? 'bg-red-950/50' : ''} ${
+                    day.occurrences.length === 0 ? 'text-neutral-600' : ''
+                  }`}
                 >
                   <td className="py-1.5 whitespace-nowrap">{formatDate(day.date)}</td>
                   <td className="py-1.5">
