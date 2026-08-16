@@ -55,3 +55,9 @@ export function daysBetween(a: ISODate, b: ISODate): number {
 export function compare(a: ISODate, b: ISODate): number {
   return a < b ? -1 : a > b ? 1 : 0   // ISO strings sort correctly as strings
 }
+
+/** Today, as a plain calendar date in the user's local timezone. */
+export function todayISO(): ISODate {
+  const d = new Date()
+  return fromParts(d.getFullYear(), d.getMonth() + 1, d.getDate())
+}

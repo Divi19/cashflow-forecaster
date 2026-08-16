@@ -57,6 +57,13 @@ export interface DayBalance {
   date: ISODate
   openingCents: Cents
   occurrences: Occurrence[]
+  /**
+   * The lowest the balance goes *during* the day, which is not always the
+   * closing balance. If rent leaves and salary arrives on the same date, the
+   * account dips before it recovers — and that dip is real money you didn't
+   * have. See the ordering decision in forecast.ts.
+   */
+  lowestCents: Cents
   closingCents: Cents
 }
 
