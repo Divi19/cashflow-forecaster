@@ -27,6 +27,14 @@ export default function App() {
     [state.items, state.openingCents, start, end]
   )
 
+  const activeDays = useMemo(
+    () =>
+      forecast.days.filter(
+        d => d.occurrences.length > 0 || d.date === forecast.troughDate
+      ),
+    [forecast]
+  )
+
   function addItem(item: CashItem) {
     setState(s => ({ ...s, items: [...s.items, item] }))
   }
@@ -113,7 +121,12 @@ export default function App() {
           <ItemList items={state.items} onDelete={deleteItem} />
         </div>
 
-        <table className="mt-8 w-full text-sm">
+        <p className="mt-8 text-xs text-neutral-500">
+          Showing the {activeDays.length} days with activity. The chart above covers
+          the full {HORIZON_DAYS}-day window.
+        </p>
+
+        <table className="mt-2 w-full text-sm">
           <thead className="text-left text-xs uppercase tracking-wide text-neutral-500">
             <tr className="border-b border-neutral-800">
               <th className="py-2 font-medium">Date</th>
@@ -123,15 +136,13 @@ export default function App() {
             </tr>
           </thead>
           <tbody>
-            {forecast.days.map(day => {
+            {activeDays.map(day => {
               const isTrough = day.date === forecast.troughDate
               const net = day.closingCents - day.openingCents
               return (
                 <tr
                   key={day.date}
-                  className={`border-b border-neutral-900 ${isTrough ? 'bg-red-950/50' : ''} ${
-                    day.occurrences.length === 0 ? 'text-neutral-600' : ''
-                  }`}
+                  className={`border-b border-neutral-900 ${isTrough ? 'bg-red-950/50' : ''}`}
                 >
                   <td className="py-1.5 whitespace-nowrap">{formatDate(day.date)}</td>
                   <td className="py-1.5">
